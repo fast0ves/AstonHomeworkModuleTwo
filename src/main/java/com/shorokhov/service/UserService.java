@@ -16,7 +16,7 @@ public class UserService {
         this.userDao = new UserDao();
     }
 
-    public Long createUser(String name, Integer age) {
+    public User createUser(String name, Integer age) {
         logger.info("Creating new user: {}, {}", name, age);
 
         User user = new User(name, age);
@@ -33,9 +33,9 @@ public class UserService {
         return userDao.findAll();
     }
 
-    public void updateUser(User user) {
+    public User updateUser(User user) {
         logger.info("Updating user with ID: {}", user.getId());
-        userDao.update(user);
+        return userDao.update(user);
     }
 
     public void deleteUser(Long id) {
