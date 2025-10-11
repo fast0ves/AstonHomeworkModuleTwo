@@ -13,17 +13,21 @@ import java.util.Optional;
 
 public class UserDao {
     private static final Logger logger = LoggerFactory.getLogger(UserDao.class);
+    private final Session session;
+    public UserDao() {
+        this.session = HibernateUtil.getSessionFactory().openSession();
+    }
 
-    public static Long create(User user) {
+    public User create(User user) {
             Transaction transaction = null;
 
-            try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            try {
                 transaction = session.beginTransaction();
-                Long id = (Long) session.save(user);
+                session.save(user);
                 transaction.commit();
-                logger.info("User saved successfully with ID: {}", id);
+                logger.info("User saved successfully with ID: {}", user.getId());
 
-                return id;
+                return user;
 
             } catch (Exception e) {
                 if (transaction != null) transaction.rollback();
@@ -33,7 +37,7 @@ public class UserDao {
         }
 
     public Optional<User> findById(Long id) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             User user = session.get(User.class, id);
 
             return Optional.ofNullable(user);
@@ -45,7 +49,7 @@ public class UserDao {
     }
 
     public List<User> findAll() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             Query<User> query = session.createQuery("FROM User", User.class);
 
             return query.list();
@@ -55,14 +59,16 @@ public class UserDao {
             throw new RuntimeException("Failed to find all users", e);
         }
     }
-    public void update(User user) {
+    public User update(User user) {
         Transaction transaction = null;
 
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             transaction = session.beginTransaction();
             session.update(user);
             transaction.commit();
             logger.info("User updated successfully with ID: {}", user.getId());
+
+            return user;
 
         } catch (Exception e) {
             if (transaction != null) transaction.rollback();
@@ -74,7 +80,7 @@ public class UserDao {
     public void delete(Long id) {
         Transaction transaction = null;
 
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try  {
             transaction = session.beginTransaction();
             User user = session.get(User.class, id);
             if (user != null) {

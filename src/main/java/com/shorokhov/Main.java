@@ -84,8 +84,8 @@ public class Main {
                 return;
             }
 
-            Long userId = userService.createUser(name, age);
-            System.out.println("User successfully created with ID: " + userId);
+           User user = userService.createUser(name, age);
+            System.out.println("User successfully created with ID: " + user);
 
         } catch (NumberFormatException e) {
             System.out.println("Error: age must be a number");
@@ -182,8 +182,8 @@ public class Main {
                 user.setAge(Integer.parseInt(ageInput));
             }
 
-            userService.updateUser(user);
-            System.out.println("The user has been successfully updated");
+            User updatedUser = userService.updateUser(user);
+            System.out.println("The user has been successfully updated" + updatedUser);
 
         } catch (NumberFormatException e) {
             System.out.println("Error: ID and age must be numbers");
