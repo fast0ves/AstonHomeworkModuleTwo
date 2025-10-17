@@ -16,6 +16,10 @@ public class UserService {
         this.userDao = new UserDao();
     }
 
+    public UserService(UserDao userDao) {
+        this.userDao = userDao;
+    }
+
     public User createUser(String name, Integer age) {
         logger.info("Creating new user: {}, {}", name, age);
 
