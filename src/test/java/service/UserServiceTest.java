@@ -1,137 +1,154 @@
 package service;
 
-import com.shorokhov.dao.UserDao;
-import com.shorokhov.entity.User;
-import com.shorokhov.service.UserService;
-import org.junit.jupiter.api.BeforeEach;
+import org.example.dao.UserDaoImpl;
+import org.example.entity.User;
+import org.example.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.time.temporal.ChronoUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceTest {
-    private UserService userService;
+class UserServiceMockTest {
+
     @Mock
-    private UserDao userDao;
-    private User testUser;
+    private UserDaoImpl userDao;
 
-    @BeforeEach
-    void setUp() {
+    @InjectMocks
+    private UserService userService;
 
-        userService = new UserService(userDao);
+    @Test
+    void findUser_withExistId() {
+        User expectedUser = new User("cece", "cece@mail.ru", 25,
+                LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
+        when(userDao.findById(expectedUser.getId())).thenReturn(expectedUser);
 
-        testUser = new User("John Doe", 25);
-        testUser.setId(1L);
-        testUser.setCreatedAt(LocalDateTime.now());
+        User actualUser = userService.findUser(expectedUser.getId());
+
+        assertEquals(expectedUser, actualUser);
+        verify(userDao).findById(expectedUser.getId());
     }
 
     @Test
-    void constructor_ShouldInitializeUserDao() {
-        try (MockedConstruction<UserDao> mockedUserDao = mockConstruction(UserDao.class)) {
+    void findUser_withNonExist() {
+        int userId = 999;
+        when(userDao.findById(userId)).thenReturn(null);
 
-            UserService userService = new UserService();
+        User actualUser = userService.findUser(userId);
 
-            assertNotNull(userService);
-            assertEquals(1, mockedUserDao.constructed().size());
-        }
+        assertNull(actualUser);
+        verify(userDao).findById(userId);
     }
 
     @Test
-    void createUser_WithValidDataShouldReturnCreatedUser() {
-        String name = "John Doe";
-        Integer age = 25;
+    void createUser_withCorrectData() {
+        String name = "cece";
+        String email = "cecece@mail.ru";
+        int age = 25;
 
-        User savedUser = new User(name, age);
-        savedUser.setId(1L);
+        userService.createUser(name, email, age);
 
-        when(userDao.create(any(User.class))).thenReturn(savedUser);
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userDao).create(userCaptor.capture());
 
-        User result = userService.createUser(name, age);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals(name, result.getName());
-        assertEquals(age, result.getAge());
-        assertNotNull(result.getCreatedAt());
-
-        verify(userDao, times(1)).create(any(User.class));
+        User capturedUser = userCaptor.getValue();
+        assertEquals(name, capturedUser.getName());
+        assertEquals(email, capturedUser.getEmail());
+        assertEquals(age, capturedUser.getAge());
+        assertNotNull(capturedUser.getCreatedAt());
+        assertEquals(0, capturedUser.getCreatedAt().getSecond());
+        assertEquals(0, capturedUser.getCreatedAt().getNano());
     }
 
     @Test
-    void getUserById_WithExistingId_ShouldReturnUser() {
-        Long userId = 1L;
+    void createUser_withBlankName() {
+        String name = "";
+        String email = "cecece@mail.ru";
+        int age = 25;
 
-        when(userDao.findById(userId)).thenReturn(Optional.of(testUser));
+        userService.createUser(name, email, age);
 
-        Optional<User> result = userService.getUserById(userId);
-
-        assertTrue(result.isPresent());
-        assertEquals(testUser, result.get());
-
-        verify(userDao, times(1)).findById(userId);
+        verify(userDao, never()).create(any(User.class));
     }
 
     @Test
-    void getUserById_WithNonExistingId_ShouldReturnEmpty() {
-        Long userId = 999L;
+    void createUser_withBlankEmail() {
+        String email = "";
+        String name = "cece";
+        int age = 25;
 
-        when(userDao.findById(userId)).thenReturn(Optional.empty());
+        userService.createUser(name, email, age);
 
-        Optional<User> result = userService.getUserById(userId);
-
-        assertFalse(result.isPresent());
-
-        verify(userDao, times(1)).findById(userId);
+        verify(userDao, never()).create(any(User.class));
     }
 
     @Test
-    void getAllUsers_ShouldReturnUserList() {
-        List<User> users = List.of(testUser);
-        when(userDao.findAll()).thenReturn(users);
+    void createUser_withNegativeAge() {
+        String name = "cece";
+        String email = "cecece@mail.ru";
+        int age = -5;
 
-        List<User> result = userService.getAllUsers();
+        userService.createUser(name, email, age);
 
-        assertFalse(result.isEmpty());
-        assertEquals(1, result.size());
-        assertEquals(testUser, result.get(0));
-        verify(userDao, times(1)).findAll();
+        verify(userDao, never()).create(any(User.class));
     }
 
     @Test
-    void updateUser_WithValidUserShouldReturnUpdatedUser() {
-        User userToUpdate = new User("Updated Name", 30);
-        userToUpdate.setId(1L);
+    void createUser_withZeroAge() {
+        String name = "cece";
+        String email = "cecece@mail.ru";
+        int age = 0;
 
-        User updatedUser = new User("Updated Name", 30);
-        updatedUser.setId(1L);
+        userService.createUser(name, email, age);
 
-        when(userDao.update(userToUpdate)).thenReturn(updatedUser);
-
-        User result = userService.updateUser(userToUpdate);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals("Updated Name", result.getName());
-        assertEquals(30, result.getAge());
-        verify(userDao, times(1)).update(userToUpdate);
+        verify(userDao, never()).create(any(User.class));
     }
 
     @Test
-    void deleteUser_WithExistingIdShouldCallDaoDelete() {
-        Long userId = 1L;
-        doNothing().when(userDao).delete(userId);
+    void createUser_withSpaceName() {
+        String name = "   ";
+        String email = "cece@test.com";
+        int age = 25;
 
-        userService.deleteUser(userId);
+        userService.createUser(name, email, age);
 
-        verify(userDao, times(1)).delete(userId);
+        verify(userDao, never()).create(any(User.class));
+    }
+
+    @Test
+    void createUser_withSpaceEmail() {
+        String name = "cece";
+        String email = "   ";
+        int age = 25;
+
+        userService.createUser(name, email, age);
+
+        verify(userDao, never()).create(any(User.class));
+    }
+
+    @Test
+    void updateUser_withCorrectUser() {
+        User user = new User("cece", "cece@mail.ru", 25,
+                LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
+        userService.updateUser(user);
+
+        verify(userDao).update(user);
+    }
+
+    @Test
+    void deleteUser_withCorrectUser() {
+        User user = new User("cece", "cece@mail.ru", 25,
+                LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
+        userService.deleteUser(user);
+
+        verify(userDao).delete(user);
     }
 }
