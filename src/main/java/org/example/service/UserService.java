@@ -1,46 +1,88 @@
 package org.example.service;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.example.dao.UserDaoImpl;
+import org.example.dto.UserRequestDto;
+import org.example.dto.UserResponseDto;
 import org.example.entity.User;
+import org.example.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
+@Service
+@Transactional
 public class UserService {
 
-    private static final Logger logger = LogManager.getLogger();
-    private UserDaoImpl userDao;
+    private final UserRepository userRepository;
 
-    public UserService(UserDaoImpl userDao) {
-        this.userDao = userDao;
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public User findUser(int id) {
-        logger.info("Ищем пользователя!");
-        return userDao.findById(id);
+    public UserResponseDto findUserById(int id) {
+        Optional<User> user = userRepository.findById(id);
+        return user.map(this::convertToResponseDto).orElse(null);
     }
 
-    public void createUser(String name, String email, int age) {
-        if (!name.isBlank() && !email.isBlank() && age > 0) {
-            logger.info("Создание пользователя");
-            LocalDateTime createdAt = LocalDateTime.now();
-            User newUser = new User(name, email, age, createdAt.truncatedTo(ChronoUnit.MINUTES));
-            userDao.create(newUser);
+    public UserResponseDto createUser(UserRequestDto userRequestDto) {
+        if (!userRequestDto.getName().isBlank() &&
+            !userRequestDto.getEmail().isBlank() &&
+            userRequestDto.getAge() > 0) {
+
+            LocalDateTime createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+            User newUser = new User(
+                    userRequestDto.getName(),
+                    userRequestDto.getEmail(),
+                    userRequestDto.getAge(),
+                    createdAt
+            );
+
+            User savedUser = userRepository.save(newUser);
+
+            return convertToResponseDto(savedUser);
         } else {
-            System.out.println("Неверно введены данные");
+            throw new IllegalArgumentException("Неверно введены данные");
         }
     }
 
-    public void updateUser(User user) {
-        logger.info("Обновление пользователя");
-        userDao.update(user);
+    public UserResponseDto updateUser(int id, UserRequestDto userRequestDto) {
+        Optional<User> existingUser = userRepository.findById(id);
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            user.setName(userRequestDto.getName());
+            user.setEmail(userRequestDto.getEmail());
+            user.setAge(userRequestDto.getAge());
+
+            User updatedUser = userRepository.save(user);
+
+            return convertToResponseDto(updatedUser);
+        }
+
+        return null;
     }
 
-    public void deleteUser(User user) {
-        logger.info("Удаление пользователя");
-        userDao.delete(user);
+    public boolean deleteUser(int id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+
+            return true;
+        }
+
+        return false;
     }
 
+    private UserResponseDto convertToResponseDto(User user) {
+
+        return new UserResponseDto(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getAge(),
+                user.getCreatedAt()
+        );
+    }
 }
