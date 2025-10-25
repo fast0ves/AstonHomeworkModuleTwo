@@ -1,4 +1,5 @@
 package org.example.entity;
+
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -30,9 +31,13 @@ public class User {
         this.createdAt = createdAt;
     }
 
-
     public int getId() {
         return id;
+    }
+
+    // Добавляем сеттер для id
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getName() {
