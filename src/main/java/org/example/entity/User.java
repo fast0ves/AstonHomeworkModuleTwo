@@ -35,7 +35,6 @@ public class User {
         return id;
     }
 
-    // Добавляем сеттер для id
     public void setId(int id) {
         this.id = id;
     }

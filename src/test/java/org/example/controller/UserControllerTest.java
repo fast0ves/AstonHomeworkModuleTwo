@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -95,30 +95,40 @@ public class UserControllerTest {
     }
 
     @Test
-    void updateUser_NonExistingUser_ReturnsNotFound() throws Exception {
+    void updateUser_NonExistingUser_ReturnsBadRequest() throws Exception {
         UserRequestDto requestDto = new UserRequestDto("John", "john@test.com", 25);
 
-        when(userService.updateUser(anyInt(), any(UserRequestDto.class))).thenReturn(null);
+        when(userService.updateUser(eq(999), any(UserRequestDto.class)))
+                .thenThrow(new IllegalArgumentException("Пользователь с id 999 не найден"));
 
         mockMvc.perform(put("/api/users/999")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Пользователь с id 999 не найден"));
+
+        verify(userService).updateUser(eq(999), any(UserRequestDto.class));
     }
 
     @Test
     void deleteUser_ExistingUser_ReturnsNoContent() throws Exception {
-        when(userService.deleteUser(1)).thenReturn(true);
+        doNothing().when(userService).deleteUser(1);
 
         mockMvc.perform(delete("/api/users/1"))
                 .andExpect(status().isNoContent());
+
+        verify(userService).deleteUser(1);
     }
 
     @Test
-    void deleteUser_NonExistingUser_ReturnsNotFound() throws Exception {
-        when(userService.deleteUser(999)).thenReturn(false);
+    void deleteUser_NonExistingUser_ReturnsBadRequest() throws Exception {
+        doThrow(new IllegalArgumentException("Пользователь с id 999 не найден"))
+                .when(userService).deleteUser(999);
 
         mockMvc.perform(delete("/api/users/999"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Пользователь с id 999 не найден"));
+
+        verify(userService).deleteUser(999);
     }
 }
