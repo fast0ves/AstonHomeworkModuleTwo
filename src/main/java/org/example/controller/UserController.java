@@ -33,37 +33,22 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserResponseDto> createUser(@RequestBody UserRequestDto userRequestDto) {
-        try {
-            UserResponseDto createdUser = userService.createUser(userRequestDto);
+        UserResponseDto createdUser = userService.createUser(userRequestDto);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-        } catch (IllegalArgumentException e) {
-
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable int id, @RequestBody UserRequestDto userRequestDto) {
         UserResponseDto updatedUser = userService.updateUser(id, userRequestDto);
-        if (updatedUser != null) {
 
-            return ResponseEntity.ok(updatedUser);
-        } else {
-
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(updatedUser);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable int id) {
-        boolean deleted = userService.deleteUser(id);
-        if (deleted) {
+        userService.deleteUser(id);
 
-            return ResponseEntity.noContent().build();
-        } else {
-
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.noContent().build();
     }
 }
