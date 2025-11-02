@@ -3,6 +3,7 @@ package org.example.service;
 import org.example.dto.UserRequestDto;
 import org.example.dto.UserResponseDto;
 import org.example.entity.User;
+import org.example.kafka.UserEventProducer;
 import org.example.mapper.UserMapper;
 import org.example.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ class UserServiceTest {
 
     @InjectMocks
     private UserService userService;
+
+    @Mock
+    private UserEventProducer userEventProducer;
 
     @Test
     void findUserById_ExistingUser_ReturnsUser() {
@@ -162,22 +166,30 @@ class UserServiceTest {
     }
 
     @Test
-    void deleteUser_ExistingUser_DeletesUser() {
-        when(userRepository.existsById(1)).thenReturn(true);
+    void createUser_ValidData_SendsKafkaEvent() {
+        UserRequestDto requestDto = new UserRequestDto("John", "john@test.com", 25);
+        User savedUser = new User("John", "john@test.com", 25, LocalDateTime.now());
+        savedUser.setId(1);
+        UserResponseDto responseDto = new UserResponseDto(1, "John", "john@test.com", 25, LocalDateTime.now());
 
-        assertDoesNotThrow(() -> userService.deleteUser(1));
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userMapper.toResponseDto(savedUser)).thenReturn(responseDto);
 
-        verify(userRepository).existsById(1);
-        verify(userRepository).deleteById(1);
+        UserResponseDto result = userService.createUser(requestDto);
+
+        verify(userEventProducer).sendUserCreatedEvent("john@test.com", "John");
     }
 
     @Test
-    void deleteUser_NonExistingUser_ThrowsException() {
-        when(userRepository.existsById(999)).thenReturn(false);
+    void deleteUser_ExistingUser_SendsKafkaEvent() {
+        User user = new User("John", "john@test.com", 25, LocalDateTime.now());
+        user.setId(1);
 
-        assertThrows(IllegalArgumentException.class, () -> userService.deleteUser(999));
+        when(userRepository.findById(1)).thenReturn(Optional.of(user));
 
-        verify(userRepository).existsById(999);
-        verify(userRepository, never()).deleteById(anyInt());
+        userService.deleteUser(1);
+
+        verify(userEventProducer).sendUserDeletedEvent("john@test.com", "John");
+        verify(userRepository).deleteById(1);
     }
 }

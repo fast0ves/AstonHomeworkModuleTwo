@@ -3,6 +3,7 @@ package org.example.service;
 import org.example.dto.UserRequestDto;
 import org.example.dto.UserResponseDto;
 import org.example.entity.User;
+import org.example.kafka.UserEventProducer;
 import org.example.mapper.UserMapper;
 import org.example.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,18 +18,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final UserEventProducer userEventProducer;
 
     @Autowired
-    public UserService(UserRepository userRepository, UserMapper userMapper) {
+    public UserService(UserRepository userRepository, UserMapper userMapper, UserEventProducer userEventProducer) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.userEventProducer = userEventProducer;
     }
 
     @Transactional(readOnly = true)
     public UserResponseDto findUserById(int id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
-
         return userMapper.toResponseDto(user);
     }
 
@@ -46,6 +48,8 @@ public class UserService {
 
         User savedUser = userRepository.save(newUser);
 
+        userEventProducer.sendUserCreatedEvent(savedUser.getEmail(), savedUser.getName());
+
         return userMapper.toResponseDto(savedUser);
     }
 
@@ -55,6 +59,9 @@ public class UserService {
 
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
+
+        String userEmail = user.getEmail();
+        String userName = user.getName();
 
         user.setName(userRequestDto.getName());
         user.setEmail(userRequestDto.getEmail());
@@ -67,10 +74,15 @@ public class UserService {
 
     @Transactional
     public void deleteUser(int id) {
-        if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("Пользователь с id " + id + " не найден");
-        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
+
+        String userEmail = user.getEmail();
+        String userName = user.getName();
+
         userRepository.deleteById(id);
+
+        userEventProducer.sendUserDeletedEvent(userEmail, userName);
     }
 
     private void validateUserData(UserRequestDto userRequestDto) {
