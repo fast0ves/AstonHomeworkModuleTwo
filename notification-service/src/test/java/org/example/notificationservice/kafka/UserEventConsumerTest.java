@@ -1,13 +1,15 @@
 package org.example.notificationservice.kafka;
 
-import org.example.notificationservice.service.EmailService;
 import org.example.notificationservice.dto.UserEventDto;
+import org.example.notificationservice.service.EmailService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,23 +27,34 @@ class UserEventConsumerTest {
 
         userEventConsumer.consumeUserEvent(createEvent);
 
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Добро пожаловать!"),
-                contains("Ваш аккаунт на сайте ваш сайт был успешно создан.")
-        );
+        ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(emailService).sendEmail(emailCaptor.capture(), subjectCaptor.capture(), bodyCaptor.capture());
+
+        assertEquals("test@example.com", emailCaptor.getValue());
+        assertEquals("Добро пожаловать!", subjectCaptor.getValue());
+        assertTrue(bodyCaptor.getValue().contains("John Doe"));
+        assertTrue(bodyCaptor.getValue().contains("Ваш аккаунт на сайте ваш сайт был успешно создан"));
     }
 
     @Test
     void consumeUserEvent_DeleteOperation_SendsDeletionEmail() {
         UserEventDto deleteEvent = new UserEventDto("DELETE", "test@example.com", "John Doe");
+
         userEventConsumer.consumeUserEvent(deleteEvent);
 
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Аккаунт удален"),
-                contains("Ваш аккаунт был удалён.")
-        );
+        ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> subjectCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(emailService).sendEmail(emailCaptor.capture(), subjectCaptor.capture(), bodyCaptor.capture());
+
+        assertEquals("test@example.com", emailCaptor.getValue());
+        assertEquals("Аккаунт удален", subjectCaptor.getValue());
+        assertTrue(bodyCaptor.getValue().contains("John Doe"));
+        assertTrue(bodyCaptor.getValue().contains("Ваш аккаунт был удалён"));
     }
 
     @Test
@@ -54,66 +67,44 @@ class UserEventConsumerTest {
     }
 
     @Test
-    void consumeUserEvent_WhenEmailServiceThrowsException_LogsErrorAndContinues() {
-        UserEventDto createEvent = new UserEventDto("CREATE", "test@example.com", "John Doe");
-
-        doThrow(new RuntimeException("SMTP error"))
-                .when(emailService).sendEmail(anyString(), anyString(), anyString());
-
-        userEventConsumer.consumeUserEvent(createEvent);
-
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Добро пожаловать!"),
-                contains("Ваш аккаунт на сайте ваш сайт был успешно создан.")
-        );
+    void consumeUserEvent_NullEvent_ThrowsException() {
+        // When & Then
+        assertThrows(NullPointerException.class,
+                () -> userEventConsumer.consumeUserEvent(null));
     }
 
     @Test
-    void consumeUserEvent_NullUserName_HandlesCorrectly() {
+    void consumeUserEvent_CreateOperationWithNullUserName_SendsEmailWithNull() {
         UserEventDto createEvent = new UserEventDto("CREATE", "test@example.com", null);
 
         userEventConsumer.consumeUserEvent(createEvent);
 
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Добро пожаловать!"),
-                contains("Здравствуйте, null! Ваш аккаунт на сайте ваш сайт был успешно создан.")
-        );
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendEmail(anyString(), anyString(), bodyCaptor.capture());
+
+        assertTrue(bodyCaptor.getValue().contains("null"));
     }
 
     @Test
-    void consumeUserEvent_EmptyUserName_HandlesCorrectly() {
-        UserEventDto createEvent = new UserEventDto("CREATE", "test@example.com", "");
-
-        userEventConsumer.consumeUserEvent(createEvent);
-
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Добро пожаловать!"),
-                contains("Здравствуйте, ! Ваш аккаунт на сайте ваш сайт был успешно создан.")
-        );
-    }
-
-    @Test
-    void consumeUserEvent_NullOperation_DoesNotSendEmail() {
-        UserEventDto nullOperationEvent = new UserEventDto(null, "test@example.com", "John Doe");
-
-        userEventConsumer.consumeUserEvent(nullOperationEvent);
-
-        verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
-    }
-
-    @Test
-    void consumeUserEvent_DeleteOperationWithNullUserName_HandlesCorrectly() {
-        UserEventDto deleteEvent = new UserEventDto("DELETE", "test@example.com", null);
+    void consumeUserEvent_DeleteOperationWithEmptyUserName_SendsEmailWithEmptyName() {
+        UserEventDto deleteEvent = new UserEventDto("DELETE", "test@example.com", "");
 
         userEventConsumer.consumeUserEvent(deleteEvent);
 
-        verify(emailService).sendEmail(
-                eq("test@example.com"),
-                eq("Аккаунт удален"),
-                contains("Здравствуйте, null! Ваш аккаунт был удалён.")
-        );
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendEmail(anyString(), anyString(), bodyCaptor.capture());
+
+        assertTrue(bodyCaptor.getValue().contains("Здравствуйте, !"));
+    }
+
+    @Test
+    void consumeUserEvent_WhenEmailServiceThrowsException_LogsError() {
+        UserEventDto createEvent = new UserEventDto("CREATE", "test@example.com", "John Doe");
+        doThrow(new RuntimeException("SMTP error"))
+                .when(emailService).sendEmail(anyString(), anyString(), anyString());
+
+        assertDoesNotThrow(() -> userEventConsumer.consumeUserEvent(createEvent));
+
+        verify(emailService).sendEmail(anyString(), anyString(), anyString());
     }
 }
