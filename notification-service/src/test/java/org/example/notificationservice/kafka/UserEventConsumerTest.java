@@ -68,7 +68,6 @@ class UserEventConsumerTest {
 
     @Test
     void consumeUserEvent_NullEvent_ThrowsException() {
-        // When & Then
         assertThrows(NullPointerException.class,
                 () -> userEventConsumer.consumeUserEvent(null));
     }

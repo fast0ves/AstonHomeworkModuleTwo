@@ -36,7 +36,7 @@ class KafkaConfigTest {
 
         assertNotNull(factory1);
         assertNotNull(factory2);
-        assertNotSame(factory1, factory2); // Должны быть разные инстансы
+        assertNotSame(factory1, factory2);
     }
 
     @Test
@@ -54,7 +54,6 @@ class KafkaConfigTest {
 
         ProducerFactory<String, UserEventDto> expectedProducerFactory = kafkaConfig.producerFactory();
 
-        // Проверяем, что KafkaTemplate использует producerFactory с правильными настройками
         Map<String, Object> templateConfig = kafkaTemplate.getProducerFactory().getConfigurationProperties();
         Map<String, Object> expectedConfig = expectedProducerFactory.getConfigurationProperties();
 
@@ -73,7 +72,7 @@ class KafkaConfigTest {
 
         assertNotNull(template1);
         assertNotNull(template2);
-        assertNotSame(template1, template2); // Должны быть разные инстансы
+        assertNotSame(template1, template2);
     }
 
     @Test
@@ -83,7 +82,6 @@ class KafkaConfigTest {
         ProducerFactory<String, UserEventDto> producerFactory = kafkaTemplate.getProducerFactory();
         assertNotNull(producerFactory);
 
-        // Проверяем, что producerFactory правильно настроен
         Map<String, Object> configProps = producerFactory.getConfigurationProperties();
         assertTrue(configProps.containsKey(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
         assertTrue(configProps.containsKey(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG));

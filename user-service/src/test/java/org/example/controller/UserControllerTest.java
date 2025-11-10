@@ -123,7 +123,7 @@ public class UserControllerTest {
                 .when(userService).deleteUser(999);
 
         mockMvc.perform(delete("/api/users/999"))
-                .andExpect(status().isBadRequest()); // ← Исправлено на 400
+                .andExpect(status().isBadRequest());
     }
 
     @Test

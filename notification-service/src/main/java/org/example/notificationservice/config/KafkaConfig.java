@@ -31,15 +31,10 @@ public class KafkaConfig {
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 
-        // Разрешаем все пакеты или добавляем оба пакета
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        // ИЛИ конкретные пакеты:
-        // configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "org.example.dto,org.example.notificationservice.dto");
 
-        // Явно указываем тип для десериализации
         configProps.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "org.example.notificationservice.dto.UserEventDto");
 
-        // Добавляем маппинг типов
         configProps.put(JsonDeserializer.TYPE_MAPPINGS,
                 "org.example.dto.UserEventDto:org.example.notificationservice.dto.UserEventDto," +
                 "userEventDto:org.example.notificationservice.dto.UserEventDto");
@@ -55,7 +50,6 @@ public class KafkaConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
 
-        // Добавляем обработку ошибок десериализации
         factory.setCommonErrorHandler(new CommonLoggingErrorHandler());
 
         return factory;
