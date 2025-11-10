@@ -1,8 +1,16 @@
 package org.example.notificationservice.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class UserEventDto {
+
+    @Schema(description = "Тип операции с пользователем")
     private String operation;
+
+    @Schema(description = "Email пользователя")
     private String email;
+
+    @Schema(description = "Имя пользователя")
     private String userName;
     public UserEventDto() {}
 

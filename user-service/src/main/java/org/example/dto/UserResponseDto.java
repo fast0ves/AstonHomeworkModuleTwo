@@ -1,12 +1,27 @@
 package org.example.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.hateoas.RepresentationModel;
+
 import java.time.LocalDateTime;
 
-public class UserResponseDto {
+public class UserResponseDto extends RepresentationModel<UserResponseDto> {
+    @Schema(description = "Уникальный индентификатор пользователя")
     private int id;
+
+    @Schema(description = "Имя пользователя")
     private String name;
+
+    @Email
+    @Schema(description = "Email пользователя")
     private String email;
+
+    @Schema(description = "Возраст пользователя")
     private int age;
+
+    @Schema(description = "Время создания пользователя")
     private LocalDateTime createdAt;
 
     public UserResponseDto() {}

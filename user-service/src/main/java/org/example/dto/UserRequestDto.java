@@ -1,8 +1,20 @@
 package org.example.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 public class UserRequestDto {
+
+    @Schema(description = "Имя пользователя")
     private String name;
+
+    @Email
+    @Schema(description = "Email пользователя")
     private String email;
+
+    @NotBlank
+    @Schema(description = "Возраст пользователя")
     private int age;
     public UserRequestDto() {}
 

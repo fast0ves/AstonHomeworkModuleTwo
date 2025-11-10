@@ -1,24 +1,39 @@
 package org.example.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
 @Table(name = "users")
+@Schema(description = "Основная сущность пользователя, хранимая в БД")
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "Уникальный идентификатор")
     private int id;
+    @NotBlank(message = "Имя не может быть пустым")
     @Column(nullable = false)
+    @Schema(description = "Имя пользователя")
     private String name;
+    @Email
+    @NotBlank(message = "Email не может быть пустым")
     @Column(nullable = false)
+    @Schema(description = "Почта пользователя")
     private String email;
+
+    @Min(value = 1, message = "Возраст не может быть меньше 1")
     @Column(nullable = false)
+    @Schema(description = "Возраст пользователя")
     private int age;
     @Column(name = "created_at", nullable = false)
+    @Schema(description = "Дата создания пользователя в БД")
     private LocalDateTime createdAt;
 
     public User() {
