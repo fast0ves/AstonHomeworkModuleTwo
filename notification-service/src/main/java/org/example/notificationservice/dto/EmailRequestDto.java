@@ -1,8 +1,16 @@
 package org.example.notificationservice.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class EmailRequestDto {
+
+    @Schema(description = "Email адрес получателя")
     private String to;
+
+    @Schema(description = "Тема письма")
     private String subject;
+
+    @Schema(description = "Текст пользователя")
     private String body;
 
     public EmailRequestDto() {}
