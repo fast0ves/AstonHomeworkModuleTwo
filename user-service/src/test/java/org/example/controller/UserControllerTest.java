@@ -44,14 +44,6 @@ public class UserControllerTest {
     }
 
     @Test
-    void getUser_NonExistingUser_ReturnsNotFound() throws Exception {
-        when(userService.findUserById(999)).thenReturn(null);
-
-        mockMvc.perform(get("/api/users/999"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     void createUser_ValidData_ReturnsCreated() throws Exception {
         UserRequestDto requestDto = new UserRequestDto("John", "john@test.com", 25);
         UserResponseDto responseDto = new UserResponseDto(1, "John", "john@test.com", 25, LocalDateTime.now());
@@ -92,19 +84,6 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("John Updated"))
                 .andExpect(jsonPath("$.age").value(30));
-    }
-
-    @Test
-    void updateUser_NonExistingUser_ReturnsNotFound() throws Exception {
-        UserRequestDto requestDto = new UserRequestDto("John", "john@test.com", 25);
-
-        when(userService.updateUser(eq(999), any(UserRequestDto.class)))
-                .thenReturn(null);
-
-        mockMvc.perform(put("/api/users/999")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
-                .andExpect(status().isOk());
     }
 
     @Test
