@@ -7,6 +7,8 @@ import org.example.kafka.UserEventProducer;
 import org.example.mapper.UserMapper;
 import org.example.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,70 +23,115 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final UserEventProducer userEventProducer;
+    private final CircuitBreakerFactory circuitBreakerFactory;
 
     @Autowired
-    public UserService(UserRepository userRepository, UserMapper userMapper, UserEventProducer userEventProducer) {
+    public UserService(UserRepository userRepository, UserMapper userMapper,
+                       UserEventProducer userEventProducer, CircuitBreakerFactory circuitBreakerFactory) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.userEventProducer = userEventProducer;
+        this.circuitBreakerFactory = circuitBreakerFactory;
     }
 
     @Transactional(readOnly = true)
     public UserResponseDto findUserById(int id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
-        return userMapper.toResponseDto(user);
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("userService");
+
+        return circuitBreaker.run(() -> {
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
+            return userMapper.toResponseDto(user);
+        }, throwable -> {
+            return createFallbackResponse(id, "Сервис временно недоступен. Попробуйте позже.");
+        });
     }
 
     @Transactional
     public UserResponseDto createUser(UserRequestDto userRequestDto) {
-        validateUserData(userRequestDto);
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("userService");
 
-        LocalDateTime createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
-        User newUser = new User(
-                userRequestDto.getName(),
-                userRequestDto.getEmail(),
-                userRequestDto.getAge(),
-                createdAt
-        );
+        return circuitBreaker.run(() -> {
+            validateUserData(userRequestDto);
 
-        User savedUser = userRepository.save(newUser);
+            if (userRepository.existsByEmail(userRequestDto.getEmail())) {
+                throw new IllegalArgumentException("Пользователь с email " + userRequestDto.getEmail() + " уже существует");
+            }
 
-        userEventProducer.sendUserCreatedEvent(savedUser.getEmail(), savedUser.getName());
+            LocalDateTime createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+            User newUser = new User(
+                    userRequestDto.getName(),
+                    userRequestDto.getEmail(),
+                    userRequestDto.getAge(),
+                    createdAt
+            );
 
-        return userMapper.toResponseDto(savedUser);
+            User savedUser = userRepository.save(newUser);
+
+            circuitBreaker.run(() -> {
+                userEventProducer.sendUserCreatedEvent(savedUser.getEmail(), savedUser.getName());
+                return null;
+            }, kafkaThrowable -> {
+                System.err.println("Ошибка отправки Kafka события: " + kafkaThrowable.getMessage());
+                return null;
+            });
+
+            return userMapper.toResponseDto(savedUser);
+        }, throwable -> {
+            throw new RuntimeException("Сервис создания пользователей временно недоступен: " + throwable.getMessage());
+        });
+    }
+
+    private UserResponseDto createFallbackResponse(int id, String message) {
+        UserResponseDto fallback = new UserResponseDto();
+        fallback.setId(id);
+        fallback.setName("Сервис временно недоступен");
+        fallback.setEmail("unavailable@example.com");
+        fallback.setAge(0);
+        fallback.setCreatedAt(LocalDateTime.now());
+        return fallback;
     }
 
     @Transactional
     public UserResponseDto updateUser(int id, UserRequestDto userRequestDto) {
-        validateUserData(userRequestDto);
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("userService");
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
+        return circuitBreaker.run(() -> {
+            validateUserData(userRequestDto);
 
-        String userEmail = user.getEmail();
-        String userName = user.getName();
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
 
-        user.setName(userRequestDto.getName());
-        user.setEmail(userRequestDto.getEmail());
-        user.setAge(userRequestDto.getAge());
+            user.setName(userRequestDto.getName());
+            user.setEmail(userRequestDto.getEmail());
+            user.setAge(userRequestDto.getAge());
 
-        User updatedUser = userRepository.save(user);
+            User updatedUser = userRepository.save(user);
 
-        return userMapper.toResponseDto(updatedUser);
+            return userMapper.toResponseDto(updatedUser);
+        }, throwable -> {
+            throw new RuntimeException("User update service unavailable: " + throwable.getMessage());
+        });
     }
 
     @Transactional
     public void deleteUser(int id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
+        CircuitBreaker circuitBreaker = circuitBreakerFactory.create("userService");
 
-        String userEmail = user.getEmail();
-        String userName = user.getName();
+        circuitBreaker.run(() -> {
+            User user = userRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь с id " + id + " не найден"));
 
-        userRepository.deleteById(id);
+            String userEmail = user.getEmail();
+            String userName = user.getName();
 
-        userEventProducer.sendUserDeletedEvent(userEmail, userName);
+            userRepository.deleteById(id);
+            userEventProducer.sendUserDeletedEvent(userEmail, userName);
+
+            return null;
+        }, throwable -> {
+            throw new RuntimeException("User deletion service unavailable: " + throwable.getMessage());
+        });
     }
 
     private void validateUserData(UserRequestDto userRequestDto) {
