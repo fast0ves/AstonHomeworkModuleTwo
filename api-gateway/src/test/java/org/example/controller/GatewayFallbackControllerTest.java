@@ -1,19 +1,21 @@
 package org.example.controller;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-class GatewayFallbackControllerUnitTest {
+public class GatewayFallbackControllerTest {
 
     private final GatewayFallbackController controller = new GatewayFallbackController();
 
     @Test
-    void userServiceFallback_ShouldReturnCorrectResponse() {
+    public void userServiceFallback_ShouldReturnCorrectResponse() {
         ResponseEntity<Map<String, String>> response = controller.userServiceFallback();
 
         assertNotNull(response);
@@ -27,7 +29,7 @@ class GatewayFallbackControllerUnitTest {
     }
 
     @Test
-    void notificationServiceFallback_ShouldReturnCorrectResponse() {
+    public void notificationServiceFallback_ShouldReturnCorrectResponse() {
         ResponseEntity<Map<String, String>> response = controller.notificationServiceFallback();
 
         assertNotNull(response);
@@ -41,7 +43,7 @@ class GatewayFallbackControllerUnitTest {
     }
 
     @Test
-    void userServiceFallback_ShouldHaveServiceUnavailableStatus() {
+    public void userServiceFallback_ShouldHaveServiceUnavailableStatus() {
         ResponseEntity<Map<String, String>> response = controller.userServiceFallback();
 
         assertTrue(response.getStatusCode().is5xxServerError());
@@ -49,7 +51,7 @@ class GatewayFallbackControllerUnitTest {
     }
 
     @Test
-    void notificationServiceFallback_ShouldHaveServiceUnavailableStatus() {
+    public void notificationServiceFallback_ShouldHaveServiceUnavailableStatus() {
         ResponseEntity<Map<String, String>> response = controller.notificationServiceFallback();
 
         assertTrue(response.getStatusCode().is5xxServerError());
@@ -57,7 +59,7 @@ class GatewayFallbackControllerUnitTest {
     }
 
     @Test
-    void fallbackResponses_ShouldContainExpectedFields() {
+    public void fallbackResponses_ShouldContainExpectedFields() {
         ResponseEntity<Map<String, String>> userResponse = controller.userServiceFallback();
         Map<String, String> userBody = userResponse.getBody();
 
