@@ -86,6 +86,7 @@ class EmailServiceTest {
     }
 
     @Test
+
     void sendEmail_EmptyParameters_CallsMailSender() {
         emailService.sendEmail("", "", "");
 
